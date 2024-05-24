@@ -1,85 +1,66 @@
+import vlc
 import os 
-import env 
-import re 
-import speech_recognition as sr
+import time
 from itertools import zip_longest
-import ffmpeg 
-import vlc 
 
-# a = sr.Recognizer()
+#####################
+# vlcで再生させていく
+#####################
 
-# wav_dir = r"F:\test_wav"
-# sort = sorted(os.listdir(wav_dir), key=lambda x: int(re.search(r'\d+', x).group()))
-# for i,wav_file in enumerate(sort):
-#     abs_file = os.path.join(wav_dir, wav_file)
-#     try:
-#         with sr.AudioFile(abs_file) as source:
-#             b = a.record(source)
-#             text = a.recognize_google(b, language='en-US')
-            
-#             with open(rf"F:\test_srt/output{i}.srt", 'w') as f:
-#                 f.write(f'{i + 1}\n')
-#                 f.write(f'00:00:00,000 --> 00:00:02,000\n')
-#                 f.write(text)
-            
-#     except sr.exceptions.UnknownValueError as e:
-#         continue
+def vlc_streaming(mkv_sort, srt_sort):
+    instance = vlc.Instance('--sub-source=marq')
+    player = instance.media_player_new()
 
-
-def test():
-    wav = os.listdir(r"F:\test_wav")
-    srt = os.listdir(r"F:\test_srt")
-    mp4 = os.listdir(r"F:\test_mp4")
-    wav_sort = sorted(wav, key=lambda x: int(re.search(r'\d+', x).group()))
-    srt_sort = sorted(srt, key=lambda x: int(re.search(r'\d+', x).group()))
-    mp4_sort = sorted(mp4, key=lambda x: int(re.search(r'\d+', x).group()))
-    
-    mkv = r"F:\test_mkv"
-    
-    i = 0
-    
-    for wav_file, srt_file, mp4_file in zip_longest(wav_sort, srt_sort, mp4_sort):
-        try:
+    while True:
+        for mkv_file, srt_file in zip_longest(mkv_sort, srt_sort):
             if srt_file is None:
-                wav = rf"F:\test_wav\{wav_file}"
-                mp4 = rf"F:\test_mp4\{mp4_file}"
+                mkv = os.path.join(r"F:\test_mkv", mkv_file)
                 
-                a = ffmpeg.input(wav)
-                c = ffmpeg.input(mp4)
+                media = instance.media_new(mkv)
+                player.set_media(media)
                 
-                output = (
-                    ffmpeg.output(c['v'], a['a'], os.path.join(mkv, f'output{i}.mkv'), c='copy')
-                )
-                ffmpeg.run(output)
+                player.play()
                 
-                i += 1
+                start_time = time.time()
                 
+                # player.play()が早すぎて、うまく再生されない。　なのでwhile文で再生されるまでtime.sleep(0.1)を繰り返させ、うまく再生されるようにする。
+                while player.get_state() not in (vlc.State.Playing, vlc.State.Error, vlc.State.Ended):
+                    if time.time() - start_time > 2:
+                        print(f'再生が開始されませんでした。: {mkv}')
+                        player.stop()
+                        break 
+                    time.sleep(0.1)
+                
+                
+                if player.get_state() == vlc.State.Playing:
+                    duration = player.get_length() / 1000 
+                    time.sleep(duration)
             else:
-                wav = rf"F:\test_wav\{wav_file}"
-                srt = rf"F:\test_srt\{srt_file}"
-                mp4 = rf"F:\test_mp4\{mp4_file}"
+                mkv = os.path.join(r"F:\test_mkv", mkv_file)
+                srt = os.path.join(r"F:\test_srt", srt_file)
+
+                media = instance.media_new(mkv)
+                media.add_option(f':sub-file={srt}')
+                player.set_media(media)
                 
-                a = ffmpeg.input(wav)
-                b = ffmpeg.input(srt)
-                c = ffmpeg.input(mp4)
+                player.play()
                 
-                output = (
-                    ffmpeg.output(c['v'], a['a'], b['s'], os.path.join(mkv, f'output{i}.mkv'), c='copy')
-                )
-                ffmpeg.run(output)
+                start_time = time.time()
                 
-                i += 1
-        except Exception as e:
-            print('ファイルが見つからなかったのでスキップします。', e)
-    
-    # instance = vlc.Instance('--sub-source=marq')
-    # player = instance.media_player_new()
-    # media = instance.media_new(mkv)
-    # player.set_media(media)
-    # player.play()
-    
-    # while True:
-    #     continue
-    
-    
-test()
+                # player.play()が早すぎて、うまく再生されない。　なのでwhile文で再生されるまでtime.sleep(0.1)を繰り返させ、うまく再生されるようにする。
+                while player.get_state() not in (vlc.State.Playing, vlc.State.Error, vlc.State.Ended):
+                    if time.time() - start_time > 2:
+                        print(f'再生が開始されませんでした。: {mkv}')
+                        player.stop()
+                        break 
+                    time.sleep(0.1)
+                
+                
+                if player.get_state() == vlc.State.Playing:
+                    duration = player.get_length() / 1000 
+                    time.sleep(duration)
+                
+        while True:
+            continue
+            
+
